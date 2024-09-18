@@ -1,6 +1,5 @@
 import React from 'react'
 import { useState } from 'react'
-import { Link} from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import {
   Select,
@@ -10,9 +9,16 @@ import {
   SelectValue,
 } from "./ui/select"
 import { Button } from './ui/button';
+import { useNavigate } from 'react-router-dom';
+
+
 export default function Home() {
     const [selectedBlockchain, setSelectedBlockchain] = useState('');
-    const [page, setPage] = useState('select');
+    const navigate = useNavigate();
+    const buttonHandler = ()=>{
+      navigate('/generate',{ state: {selectedBlockchain}});
+      console.log("Home block: ", selectedBlockchain);
+    }
   return (
     <div className='items-center my-auto'>
       <Card className="w-full max-w-md mx-auto">
@@ -30,15 +36,13 @@ export default function Home() {
               <SelectItem value="Ethereum">Ethereum</SelectItem>
             </SelectContent>
           </Select>
-         <Link to="/generate">
           <Button 
-              onClick={() => setPage('generate')} 
+              onClick={buttonHandler} 
               disabled={!selectedBlockchain}
               className="w-full mt-2"
             >
               Next
             </Button>
-         </Link>
         </CardContent>
       </Card>
     </div>
