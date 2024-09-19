@@ -17,7 +17,6 @@ export default function Home() {
     const navigate = useNavigate();
     const buttonHandler = ()=>{
       navigate('/generate',{ state: {selectedBlockchain}});
-      console.log("Home block: ", selectedBlockchain);
     }
   return (
     <div className='items-center my-auto'>
