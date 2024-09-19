@@ -15,6 +15,8 @@ import { Wallet, HDNodeWallet } from "ethers";
 import { MdDelete } from "react-icons/md";  
 import { useToast } from "@/hooks/use-toast"
 import { FaRegCopy } from "react-icons/fa6";
+import bs58 from 'bs58';
+import axios from 'axios';
 
 
 export default function GenerateWallet() {
@@ -29,6 +31,8 @@ export default function GenerateWallet() {
   const [copiedStates, setCopiedStates] = useState({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mnemonics, setMnemonics] = useState('');
+  const [selectedWalletBalance, setSelectedWalletBalance] = useState(null); 
+  const [showBalanceModal, setShowBalanceModal] = useState(false); 
 
   const localStorageKey = selectedBlockchain === 'Solana' ? 'solanaWallets' : 'ethereumWallets';
 
@@ -91,10 +95,12 @@ export default function GenerateWallet() {
       const child = hdNode.derivePath(derivationPath);
       const privateKey = child.privateKey;
       const wallet = new Wallet(privateKey);
+      const privateKeyBase58 = bs58.encode(Buffer.from(privateKey.replace(/^0x/, ''), 'hex'));
+      
       setCurrentIndex(currentIndex + 1);
       newWallet = {
         publicKey: wallet.address.toString(),
-        privateKey: Buffer.from(privateKey).toString('hex'),
+        privateKey: privateKeyBase58,
       };
     }
 
@@ -110,8 +116,60 @@ export default function GenerateWallet() {
     navigator.clipboard.writeText(text);
     setCopiedStates({ ...copiedStates, [key]: true });
     toast({
-      title: "Items copied successfully!",
+      title: "Key copied successfully!",
       description: "",
+    })
+    setTimeout(() => setCopiedStates({ ...copiedStates, [key]: false }), 2000);
+  };
+
+
+    // Lets create fn to check the balance of a wallet ----> :)
+    const SolApi = import.meta.env.VITE_SolanaAPI;
+    const EthApi = import.meta.env.VITE_EthAPI;
+    const checkBalance = async (wallet) => {
+      let response;
+      try {
+        if (selectedBlockchain === 'Solana') {
+          // Solana Balance Request
+          response = await axios.post(`${SolApi}`, {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "getBalance",
+            params: [wallet.publicKey],
+          });
+          const result = response.data.result.value/1e9;
+          setSelectedWalletBalance(result);
+        }
+         else{
+          response = await axios.post(`${EthApi}`, {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "eth_getBalance",
+            params: [wallet.publicKey, "latest"],
+          });
+          // console.log("RES", response);
+          const result = parseInt(response.data.result,16)/1e18;
+          // console.log("ETH BALA: ",result)
+          setSelectedWalletBalance(result); 
+        }
+        // Now turn on balance modal
+        setShowBalanceModal(true); 
+      } catch (error) {
+        console.error("Error fetching balance:", error);
+        toast({
+          title: "Couldn't check your balance!",
+          description: error,
+        })
+        setSelectedWalletBalance(null);
+      }
+    };
+
+  const copyToClipboardSecret = (text, key) => {
+    navigator.clipboard.writeText(text);
+    setCopiedStates({ ...copiedStates, [key]: true });
+    toast({
+      title: "Copied!",
+      description: "Don't share this secret!! If someone has your secret phrase, they will have full control of your wallet!",
     })
     setTimeout(() => setCopiedStates({ ...copiedStates, [key]: false }), 2000);
   };
@@ -121,7 +179,7 @@ export default function GenerateWallet() {
   };
 
   return (
-    <div className='text-white text-3xl my-auto'>
+    <div className='text-white text-3xl my-auto relative'>
       <Card className="w-full max-w-2xl mx-auto relative">
         {/* Blockchain logo */}
         {theme === 'dark' && (
@@ -165,8 +223,8 @@ export default function GenerateWallet() {
             <div className="space-y-4">
               <div className='flex justify-between'>
               <Button className="h-8 w-10"
-                  onClick={() => copyToClipboard(mnemonics, 'mnemonics')} 
-                  title="Save your Mnemonics for future" 
+                  onClick={() => copyToClipboardSecret(mnemonics, 'mnemonics')} 
+                  title="Save your secret phrase" 
                 >
                   <FaRegCopy size={28} />
                 </Button>
@@ -225,6 +283,11 @@ export default function GenerateWallet() {
                         {copiedStates[`privateKey${index}`] ? <CheckIcon className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />}
                       </Button>
                     </div>
+                    <div>
+                      <Button onClick={() => checkBalance(wallet)} className="mt-2">
+                        Check Balance
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -232,6 +295,19 @@ export default function GenerateWallet() {
           )}
         </CardContent>
       </Card>
+      {/* Modal */}
+      {showBalanceModal && (
+        <div className="fixed top-0 right-0 left-0 bottom-0 flex justify-center items-center overflow-auto bg-white bg-opacity-10 backdrop-blur-sm  border-black  shadow-3xl shadow-slate-950 z-50">
+          <div className="bg-white p-6 border rounded-md border-zinc-600 shadow-5xl shadow-slate-900 text-black">
+            <h2 className="text-xl font-bold mb-4">Wallet Balance</h2>
+            {selectedBlockchain === 'Solana' && <p>Balance: {selectedWalletBalance} SOL</p>}
+            {selectedBlockchain === 'Ethereum' && <p>Balance: {selectedWalletBalance} ETH</p>}
+            <Button onClick={() => setShowBalanceModal(false)} className="mt-4">
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
