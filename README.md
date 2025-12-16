@@ -20,4 +20,4 @@ Welcome to the future of cryptocurrency management! This web wallet seamlessly i
 
 ## 💻 Try It Out Live!
 
-Experience the convenience of managing your crypto assets today! [https://ashutosh-crypto-wallet.vercel.app/ !]
+Experience the convenience of managing your crypto assets today! [https://web-wallet-flame.vercel.app/!]
